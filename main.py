@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse, FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 from pathlib import Path
 import asyncio
 import json
@@ -10,15 +11,19 @@ import json
 OCR_RESULTS: dict[str, dict] = {}
 ENGINEER_DATA: dict[str, dict] = {}
 
-# DUMMY DIMENSIONAL DATA CLASS
-class dummy_data(BaseModel):
-    header: list[ str ]
-    rows: list[list[str | float]]
-    img_size: int
+# DUMMY DIMENSIONAL PART CLASS
+class part_dummy(BaseModel):
+    part_number: str
+    specifications: dict[str, str] = Field(default_factory=dict)
 
 # DUMMY ENGINEER DIMENSIONS
-class dummy_dimensions(BaseModel):
-    row: list[ str | float]
+class table_dummy(BaseModel):
+    table_name: Optional[str] = None
+    header_rows: int = 1
+    parts: list[part_dummy] = Field(default_factory=list)
+
+class table_data_dummy(BaseModel):
+    tables: list[table_dummy] = Field(default_factory=list)
 
 
 # DUMMY OCR
@@ -26,12 +31,28 @@ def dummy_OCR(image_bytes: bytes):
     # in the real OCR module,
     # it would need to populate the following object
 
-    dummy_dimensions = dummy_data(
-        header=[ "A", "B", "C"],
-        rows=[[0.23, 0.34, 4.5], [0.33, 0.44, 4.7], [0.43, 0.54, 4.9]],
-        img_size= len(image_bytes))
+    part1 = part_dummy(
+        part_number="X-1",
+        specifications= {"A": "12", "B": "12", "C": "12"}
+        )
 
-    return dummy_dimensions
+    part2 = part_dummy(
+            part_number="X-2",
+            specifications= {"A": "14", "B": "14", "C": "14"}
+            )
+
+    dummy_table = table_dummy(
+        table_name="test",
+        header_rows=1,
+        parts= [part1, part2]
+        )
+
+    dummy_tables = table_data_dummy(
+        tables=[dummy_table]
+
+    )
+
+    return dummy_tables
 
 # DUMMY PROGRESS HANDLER
 async def progress_generator():
@@ -85,12 +106,12 @@ async def generate_dimensions_from_OCR(file: UploadFile = File(...)):
     return data
 
 @app.post("/conversion/start")
-async def recieve_engineer_dimensions(payload: dummy_dimensions):
+async def recieve_engineer_dimensions(payload: part_dummy):
     # recieves the engineers selected row in JSON
     # sends the dimensions and image to the CadQuery gen layer
     # through openAI api key
 
-    if not payload.row:
+    if not payload.specifications:
         raise HTTPException(status_code=422, detail="No row selected")
 
     ENGINEER_DATA["testID"] = payload.model_dump()
