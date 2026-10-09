@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
+from pathlib import Path
 import asyncio
 import json
 # in prod, we need to import all the classes from the other files
@@ -54,14 +55,17 @@ async def progress_generator():
         yield f"data: {json.dumps(payload)}\n\n"
         await asyncio.sleep(1)
 
+MODELS = Path("STEP")
 
 
 
 app = FastAPI()
 
 # ----------------------- FASTAPI ROUTES -----------------------
+#  note, we will have to rewrite this to OOP style routes
 @app.get("/")
 def read_root():
+    # delete in prod
     return {"message": "Team 417 says hello!"}
 
 
@@ -105,5 +109,11 @@ async def begin_progress_updates():
 @app.get("/step")
 async def return_validated_step_file():
     # returns the validated step file
-
-    return {"message": "pretend this is a valid STEP file"}
+    # this is for a single STP file, in prod
+    # change to something that can serve the STP
+    # file from the output folder?
+    path = ( MODELS / "140270.stp").resolve()
+    if MODELS.resolve() not in path.parents or not path.exists():
+        raise HTTPException(404, "Model not found")
+    
+    return FileResponse(path, media_type="application/step", filename="140270.stp")
