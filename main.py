@@ -1,5 +1,8 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+import asyncio
+import json
 # in prod, we need to import all the classes from the other files
 
 # DUMMY REDIS CACHE?
@@ -28,6 +31,28 @@ def dummy_OCR(image_bytes: bytes):
         img_size= len(image_bytes))
 
     return dummy_dimensions
+
+# DUMMY PROGRESS HANDLER
+async def progress_generator():
+    #  just a for loop that sends data like numerical progress
+    #  and some flavor text
+    flav_text = ["Procrastinating for just a few more seconds...",
+                 "Adding artificial delay to look important...",
+                 "Generating more flavor text...",
+                 "Looking for the API key...",
+                 "Whirling and dhirling...",
+                 "Chasing wild geese...",
+                 "Twiddling thumbs...",
+                 "Flavor text.",
+
+    ] 
+
+    for i in range(100):
+
+        txt = flav_text[i%8]
+        payload = {"progress": i, "flavor-text": txt}
+        yield f"data: {json.dumps(payload)}\n\n"
+        await asyncio.sleep(1)
 
 
 
@@ -71,7 +96,11 @@ async def recieve_engineer_dimensions(payload: dummy_dimensions):
 @app.get("/progress")
 async def begin_progress_updates():
     # initializes the SSE progress updates from each module
-    return {"message": "initializing SSE handshakes"}
+    return StreamingResponse(
+        progress_generator(),
+        media_type="text/event-stream",
+        headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 @app.get("/step")
 async def return_validated_step_file():
